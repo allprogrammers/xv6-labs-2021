@@ -13,6 +13,7 @@ void freerange(void *pa_start, void *pa_end);
 
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
+int pagesavailable;
 
 struct run {
   struct run *next;
@@ -27,6 +28,7 @@ void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  pagesavailable = 0;
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -59,6 +61,7 @@ kfree(void *pa)
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
+  pagesavailable+=1;
   release(&kmem.lock);
 }
 
@@ -77,6 +80,14 @@ kalloc(void)
   release(&kmem.lock);
 
   if(r)
+  {
     memset((char*)r, 5, PGSIZE); // fill with junk
+    pagesavailable-=1;
+  }
   return (void*)r;
+}
+
+int getFreeMemory(void)
+{
+  return pagesavailable*PGSIZE;
 }
